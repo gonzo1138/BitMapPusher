@@ -111,41 +111,37 @@ public class BMP {
             picStreamOut = new BufferedOutputStream (new FileOutputStream(picOut)); // throws FileNotFoundException
 
             // Coreheader-Verarbeitung:
-
-            // Liegt ein Windows-BMP vor?
-            coreHeader[0] = picStreamIn.read();       // hier soll das 'B' eingelesen werden
-            coreHeader[1] = picStreamIn.read();       // hier soll das 'M' eingelesen werden
+            int coreHeaderCount = 0;                  // Zähler für Stelle im Header (in Bytes)
+            // Signaturprüfung
+            coreHeader[coreHeaderCount++] = picStreamIn.read();       // hier soll das 'B' eingelesen werden
+            coreHeader[coreHeaderCount++] = picStreamIn.read();       // hier soll das 'M' eingelesen werden
             System.out.println("BMP-Format: " + (char) coreHeader[0] + (char) coreHeader[1]);
-            if((char) coreHeader[0] != 'B' && (char) coreHeader[1] != 'M') throw new BmpFormatException();
+            if((char) coreHeader[0] != 'B' && (char) coreHeader[1] != 'M') throw new BmpFormatException();  // Liegt mmit "BM" ein Windows-BMP vor?
 
-            // Dateigröße auslesen
-            int coreHeaderCount = 2;                                // 2 Bytes bereits ausgelesen
+            // Dateigröße
             byte[] fileSizeBytes = new byte[4];
             for(int i=fileSizeBytes.length-1; i>=0; i--) fileSizeBytes[i] = (byte) picStreamIn.read();
             fileSize = convertByteArrayToInt(fileSizeBytes);        // Konvertiert die 0en und 1en aus 4 Byte in einem Array in eine Zahl einer Integer-Variablen
             System.out.println("Dateigröße: " + fileSize + " bytes");
-            for(int i=fileSizeBytes.length-1; i>=0; i--){
-                coreHeader[coreHeaderCount] = fileSizeBytes[i];     // schreiben der Daten in das Header-Array (Reihenfolge rückwärts, wegen Endianess: https://en.wikipedia.org/wiki/Endianness#Example )
-                coreHeaderCount++;
-            }
+            for(int i=fileSizeBytes.length-1; i>=0; i--) coreHeader[coreHeaderCount++] = fileSizeBytes[i];     // schreiben der Daten in das Header-Array (Reihenfolge rückwärts, wegen Endianess: https://en.wikipedia.org/wiki/Endianness#Example )
 
             // uninteressanter Zwischenraum
-            do{
-                coreHeader[coreHeaderCount] = picStreamIn.read();
-                coreHeaderCount++;
-            }while(coreHeaderCount<10);
+            do coreHeader[coreHeaderCount++] = picStreamIn.read(); while(coreHeaderCount<10);
 
-            // Image-Offset
+            // Offset to PixelArray
             byte[] headerSizeBytes = new byte[4];
             for(int i=headerSizeBytes.length-1; i>=0; i--) headerSizeBytes[i] = (byte) picStreamIn.read();
             imageOffset = convertByteArrayToInt(headerSizeBytes);
             System.out.println("Image-Offset: " + imageOffset + " bytes");
+
+            // DIB Header
+
             for(int i=headerSizeBytes.length-1; i>=0; i--){
                 coreHeader[coreHeaderCount] = headerSizeBytes[i];    // schreiben der Daten in das Header-Array
                 coreHeaderCount++;
             }
 
-            // Header erstellen
+            // Header in output.bmp schreiben
             header = new int[imageOffset];
             for(int i=0; i<coreHeader.length; i++) header[i] = coreHeader[i];     // Coreheader kopieren
             for(int i=coreHeaderCount; i<imageOffset; i++) header[i] = picStreamIn.read();  // gesamten restlichen Header aus Datei lesen
