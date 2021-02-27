@@ -52,7 +52,7 @@ public class BMP {
         }
 
         if (newRed==0 && newGreen==0 && newBlue==0 && luminanz == 0){
-            System.out.println("Die folgenden Wertebereiche haben eine Skala von 0-255. Eine Verschiebung von +-128 maximal wäre sinnvoll.\n");
+            System.out.println("Die folgenden Parameter sind auf einen Wertebereich von 0-255 begrenzt.\nEine Verschiebung von +-128 maximal ist meist sinnvoll.\n");
             Scanner scan = new Scanner(System.in);
             System.out.println("Wie stark soll sich die Helligkeit des Bildes verändern?");
             luminanz = scan.nextInt();
@@ -100,11 +100,16 @@ public class BMP {
       50 	    4 	            the number of important colors used, or 0 when every color is important; generally ignored
 */
 
-        int[] coreHeader = new int[14];    // Größe bekannt aus Spezifikation
+        int[] coreHeader = new int[14];     // Größe bekannt aus Spezifikation
+        int[] dibHeader;                    // Größe wird erst ausgelesen
         int[] header;
         int[] image;
-        int imageOffset = 0;
-        int fileSize = 0;
+        //int[] footer;
+
+        int imageOffset;
+        int fileSize;
+        int dibHeaderSize;
+        int imageSize;
 
         try{
             picStreamIn  = new BufferedInputStream  (new FileInputStream(picIn));   // throws FileNotFoundException
@@ -112,6 +117,7 @@ public class BMP {
 
             // Coreheader-Verarbeitung:
             int coreHeaderCount = 0;                  // Zähler für Stelle im Header (in Bytes)
+
             // Signaturprüfung
             coreHeader[coreHeaderCount++] = picStreamIn.read();       // hier soll das 'B' eingelesen werden
             coreHeader[coreHeaderCount++] = picStreamIn.read();       // hier soll das 'M' eingelesen werden
@@ -123,35 +129,60 @@ public class BMP {
             for(int i=fileSizeBytes.length-1; i>=0; i--) fileSizeBytes[i] = (byte) picStreamIn.read();
             fileSize = convertByteArrayToInt(fileSizeBytes);        // Konvertiert die 0en und 1en aus 4 Byte in einem Array in eine Zahl einer Integer-Variablen
             System.out.println("Dateigröße: " + fileSize + " bytes");
-            for(int i=fileSizeBytes.length-1; i>=0; i--) coreHeader[coreHeaderCount++] = fileSizeBytes[i];     // schreiben der Daten in das Header-Array (Reihenfolge rückwärts, wegen Endianess: https://en.wikipedia.org/wiki/Endianness#Example )
+            for(int i=fileSizeBytes.length-1; i>=0; i--) coreHeader[coreHeaderCount++] = fileSizeBytes[i];     // kopieren der Bytes in coreHeader-Array (Reihenfolge rückwärts wegen Endianess: https://en.wikipedia.org/wiki/Endianness#Example )
 
             // uninteressanter Zwischenraum
             do coreHeader[coreHeaderCount++] = picStreamIn.read(); while(coreHeaderCount<10);
 
             // Offset to PixelArray
-            byte[] headerSizeBytes = new byte[4];
-            for(int i=headerSizeBytes.length-1; i>=0; i--) headerSizeBytes[i] = (byte) picStreamIn.read();
-            imageOffset = convertByteArrayToInt(headerSizeBytes);
+            byte[] offsetToPixels = new byte[4];
+            for(int i=offsetToPixels.length-1; i>=0; i--) offsetToPixels[i] = (byte) picStreamIn.read();
+            imageOffset = convertByteArrayToInt(offsetToPixels);
             System.out.println("Image-Offset: " + imageOffset + " bytes");
+            for(int i=offsetToPixels.length-1; i>=0; i--) coreHeader[coreHeaderCount++] = offsetToPixels[i];    // kopieren der Bytes in coreHeader-Array
+            // ------------------
 
             // DIB Header
+            int dibHeaderCount = 0;
 
-            for(int i=headerSizeBytes.length-1; i>=0; i--){
-                coreHeader[coreHeaderCount] = headerSizeBytes[i];    // schreiben der Daten in das Header-Array
-                coreHeaderCount++;
-            }
+            // DIB Header Size
+            byte[] dibHeaderBytes = new byte[4];
+            for(int i=dibHeaderBytes.length-1; i>=0; i--) dibHeaderBytes[i] = (byte) picStreamIn.read();
+            dibHeaderSize = convertByteArrayToInt(dibHeaderBytes);
+            System.out.println("DIB-Header:  " + dibHeaderSize + " bytes");
+            for(int i=dibHeaderBytes.length-1; i>=0; i--) coreHeader[dibHeaderCount++] = dibHeaderBytes[i];     // kopieren der Bytes in dibHeader-Array
+            dibHeader = new int[dibHeaderSize];
 
-            // Header in output.bmp schreiben
+            // Image width
+
+            // Image height
+
+            // ...
+            do dibHeader[dibHeaderCount++] = picStreamIn.read(); while(dibHeaderCount<20);
+
+            // Image size
+            byte[] imageBytes = new byte[4];
+            for(int i=imageBytes.length-1; i>=0; i--) imageBytes[i] = (byte) picStreamIn.read();
+            imageSize = convertByteArrayToInt(imageBytes);
+            System.out.println("Image-Size:  " + imageSize + " bytes");
+            for(int i=imageBytes.length-1; i>=0; i--) dibHeader[dibHeaderCount++] = imageBytes[i];     // kopieren der Bytes in dibHeader-Array
+
+            // restlichen DIB-Header lesen
+            do dibHeader[dibHeaderCount++] = picStreamIn.read(); while(dibHeaderCount<dibHeaderSize);
+
+            // kompletten Header in output.bmp schreiben
+            int headerCount = 0;
             header = new int[imageOffset];
-            for(int i=0; i<coreHeader.length; i++) header[i] = coreHeader[i];     // Coreheader kopieren
-            for(int i=coreHeaderCount; i<imageOffset; i++) header[i] = picStreamIn.read();  // gesamten restlichen Header aus Datei lesen
-            for(int i=0; i<imageOffset; i++) picStreamOut.write(header[i]);      // schreibe Header in Ausgabedatei
+            for(int i=0; i<coreHeader.length; i++) header[headerCount++] = coreHeader[i];   // Coreheader kopieren
+            for(int i=0; i<dibHeader.length; i++) header[headerCount++] = dibHeader[i];     // DIB-Header kopieren
+            for(int i=coreHeaderCount+dibHeaderCount; i<imageOffset; i++) header[headerCount++] = picStreamIn.read();  // restlichen Header (Color-Table etc.) aus Datei lesen
+            for(int i=0; i<headerCount; i++) picStreamOut.write(header[i]);                 // schreibe Header in Ausgabedatei
 
 
             // Pixel des BMP verarbeiten und verändern:
             int byteRead;                                           // Puffer für gelesenes Byte
             int color = 0;
-            image = new int[fileSize - headerSizeBytes.length];     // da Bildanteilgröße aus Header bekannt wird Array dieser Größe erstellt
+            image = new int[imageSize];                             // da Bildanteilgröße aus Header bekannt wird Array dieser Größe erstellt
             for (int i=0; i<image.length; i++){                     // iterieren über die Größe dieses Arrays: lesen, verändern und abspeichern jeweils eines Bytes
                 byteRead = picStreamIn.read();
 
@@ -168,13 +199,17 @@ public class BMP {
                 picStreamOut.write(byteRead);
             }
 
-/*
+            // Restliche Datei 1:1 übernehmen
             while((byteRead = picStreamIn.read()) != -1){
-                //...
-                byteRead = 255-byteRead;        // Farben invertieren
                 picStreamOut.write(byteRead);
             }
+
+/*
+            int footerCount = 0;
+            footer = new int[fileSize-(imageOffset+imageSize)];
+            for(int i=imageOffset+imageSize; i<fileSize; i++) footer[footerCount++] = picStreamIn.read();
 */
+
 
             picStreamIn.close();
             picStreamOut.flush();
