@@ -29,12 +29,12 @@ public class BMP {
 
     public static void main(String[] args) {
 
-        // Aufrufparameter einlesen:    (Ziel: Verschiebung der RGB-Farbwerte pro Pixel um angegeben Wert)
         int newRed = 0;
         int newGreen = 0;
         int newBlue = 0;
         int luminanz = 0;
-        //boolean colorOrLuminanz = false;
+
+        // Aufrufparameter einlesen:    (Ziel: Verschiebung der RGB-Farbwerte pro Pixel um angegeben Wert)
         if(args != null) {
             switch (args.length) {
                 case 1:
