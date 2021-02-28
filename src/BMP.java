@@ -85,17 +85,20 @@ public class BMP {
 */
 
         int[] coreHeader = new int[14];     // Größe bekannt aus Spezifikation
-        int[] dibHeader;                    // Größe wird erst ausgelesen
+        //int[] dibHeader;                    // Größe wird erst ausgelesen
         int[] header;
         int[] image;
         //int[] footer;
 
+        // aus Core-Header:
         int fileSize;
         int imageOffset;
         int imageOffsetPosition = 10;
-        int dibHeaderSize;
-        int imageSize;
-        int imageSizePosition = 20;
+
+        // aus DIB-Header:
+        //int dibHeaderSize;
+        //int imageSize;
+        //int imageSizePosition = 20;
 
         try{
             picStreamIn  = new BufferedInputStream  (new FileInputStream(picIn));   // throws FileNotFoundException
