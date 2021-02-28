@@ -155,7 +155,7 @@ public class BMP {
             // Image height
 
             // ...
-            do dibHeader[dibHeaderCount++] = picStreamIn.read(); while(dibHeaderCount<20);
+            do dibHeader[dibHeaderCount++] = picStreamIn.read(); while(dibHeaderCount<imageSizePosition);
 
             // Image size
             byte[] imageBytes = new byte[4];
