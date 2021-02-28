@@ -182,19 +182,25 @@ public class BMP {
             // Pixel des BMP verarbeiten und verändern:
             int byteRead;                                           // Puffer für gelesenes Byte
             int color = 0;
-            image = new int[imageSize];                             // da Bildanteilgröße aus Header bekannt wird Array dieser Größe erstellt
+            image = new int[imageSize];     // da Bildanteilgröße aus Header bekannt wird Array dieser Größe erstellt
             for (int i=0; i<image.length; i++){                     // iterieren über die Größe dieses Arrays: lesen, verändern und abspeichern jeweils eines Bytes
                 byteRead = picStreamIn.read();
 
                 byteRead = pushValue(byteRead, luminanz);
-                if(color<3){
-                    switch (color){
-                        case 0: byteRead = pushValue(byteRead, newRed);
-                        case 1: byteRead = pushValue(byteRead, newGreen);
-                        case 2: byteRead = pushValue(byteRead, newBlue);
-                    }
-                    color++;
-                } else color=0;
+                switch (color){
+                    case 0:
+                        byteRead = pushValue(byteRead, newBlue);
+                        color++;
+                        break;
+                    case 1:
+                        byteRead = pushValue(byteRead, newGreen);
+                        color++;
+                        break;
+                    case 2:
+                        byteRead = pushValue(byteRead, newRed);
+                        color=0;
+                        break;
+                }
 
                 picStreamOut.write(byteRead);
             }
